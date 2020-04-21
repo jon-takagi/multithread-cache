@@ -13,13 +13,13 @@ using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
 
 class tcp_listener : public std::enable_shared_from_this<tcp_listener> {
 public:
-    tcp_listener(net::io_context& ioc, tcp::endpoint endpoint, Cache* cache, request_processor rp);
+    tcp_listener(net::io_context& ioc, tcp::endpoint endpoint, Cache* cache, const request_processor* rp);
     void run();
 private:
     net::io_context& ioc_;
     tcp::acceptor acceptor_;
     Cache* server_cache_;
-    request_processor processor_;
+    const request_processor* processor_;
     void do_accept();
     void on_accept(beast::error_code ec, tcp::socket socket);
 };

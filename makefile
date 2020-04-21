@@ -1,4 +1,4 @@
-CXX=clang++
+CXX=g++-8
 CXXFLAGS=-Wall -Wextra -pedantic -Werror -std=c++17 -O3 -g -I /usr/local/boost_1_72_0/ -pthread
 LDFLAGS=$(CXXFLAGS)
 OBJ=$(SRC:.cc=.o)
@@ -16,7 +16,7 @@ clean:
 	rm *.bin
 
 server.bin: $(BUILDDIR)cache_lib.o $(BUILDDIR)fifo_evictor.o $(BUILDDIR)tcp_listener.o
-	$(CXX) $(LDFLAGS) -o $@ cache/cache_server.cc  $^ /vagrant/systems/boost/lib/libboost_program_options.a
+	$(CXX) $(LDFLAGS) -o $@ cache/cache_server.cc  $^ /usr/local/boost_1_72_0/ehpop/Documents/lib/libboost_program_options.a
 
 test_driver.bin: $(BUILDDIR)fifo_evictor.o $(BUILDDIR)driver.o $(BUILDDIR)gen.o $(BUILDDIR)cache_client.o
 	$(CXX) $(LDFLAGS) -o $@ driver_test.cc  $^
