@@ -1,6 +1,7 @@
 #include "cache/cache.hh"
 #include "gen.hh"
 #include <chrono>
+#include <thread>
 
 //The driver class creates a networked cache, then runs commands on it
 //It can call set, get, or delete, and the params can be adjusted to emulate the ETC workload
@@ -41,4 +42,5 @@ class Driver {
 
         std::pair<double, double> baseline_performance(int nreq);
 
+        std::pair<double, double> threaded_performance(int nreq);
 };

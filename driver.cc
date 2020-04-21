@@ -68,38 +68,40 @@ void Driver::reset()
 // warm generates new data and adds to vector until cache has gotten at least size total data
 }
 
+double time_single_request() {
+    std::chrono::time_point<std::chrono::high_resolution_clock> t1;
+    std::chrono::time_point<std::chrono::high_resolution_clock> t2;
+    Request req = gen_.gen_req(false);
+    Cache::size_type size = 0;
+    std::string val_str = std::string(req.val_size_, 'B');
+    Cache::val_type val = val_str.c_str();
+    if(req.method_ =="get") {
+        t1 = std::chrono::high_resolution_clock::now();
+        cache_->get(req.key_, size);
+    // std::cout << std::get<2>(req) << " [key: " << std::get<0>(req) << ", val: " << std::get<1>(req) <<"]"<< std::endl;
+        t2 = std::chrono::high_resolution_clock::now();
+    } else if (req.method_ == "set") {
+        t1 = std::chrono::high_resolution_clock::now();
+        cache_->set(req.key_, val, req.val_size_+1);
+    // std::cout << std::get<2>(req) << " [key: " << std::get<0>(req) << ", val: " << std::get<1>(req) <<"]"<< std::endl;
+        t2 = std::chrono::high_resolution_clock::now();
+    } else if (req.method_ == "del") {
+        t1 = std::chrono::high_resolution_clock::now();
+        cache_->del(req.key_);
+    // std::cout << std::get<2>(req) << " [key: " << std::get<0>(req) << ", val: " << std::get<1>(req) <<"]"<< std::endl;
+        t2 = std::chrono::high_resolution_clock::now();
+    }
+    std::chrono::duration<double, std::milli> elapsed = std::chrono::duration_cast<std::chrono::duration<double, std::milli>> (t2-t1);
+    return elapsed.count();
+}
+
+
 // param: number of requests to make
 // return: vector containing the time for each measurement
 std::vector<double> Driver::baseline_latencies(int nreq) {
     std::vector<double> results(nreq);
-    std::chrono::time_point<std::chrono::high_resolution_clock> t1;
-    std::chrono::time_point<std::chrono::high_resolution_clock> t2;
     for(int i = 0; i < nreq; i++) {
-        Request req = gen_.gen_req(false);
-        Cache::size_type size = 0;
-        std::string val_str = std::string(req.val_size_, 'B');
-        Cache::val_type val = val_str.c_str();
-        if(req.method_ =="get") {
-            t1 = std::chrono::high_resolution_clock::now();
-            cache_->get(req.key_, size);
-        // std::cout << std::get<2>(req) << " [key: " << std::get<0>(req) << ", val: " << std::get<1>(req) <<"]"<< std::endl;
-            t2 = std::chrono::high_resolution_clock::now();
-        } else if (req.method_ == "set") {
-            t1 = std::chrono::high_resolution_clock::now();
-            cache_->set(req.key_, val, req.val_size_+1);
-        // std::cout << std::get<2>(req) << " [key: " << std::get<0>(req) << ", val: " << std::get<1>(req) <<"]"<< std::endl;
-            t2 = std::chrono::high_resolution_clock::now();
-        } else if (req.method_ == "del") {
-            t1 = std::chrono::high_resolution_clock::now();
-            cache_->del(req.key_);
-        // std::cout << std::get<2>(req) << " [key: " << std::get<0>(req) << ", val: " << std::get<1>(req) <<"]"<< std::endl;
-            t2 = std::chrono::high_resolution_clock::now();
-        }
-        std::chrono::duration<double, std::milli> elapsed = std::chrono::duration_cast<std::chrono::duration<double, std::milli>> (t2-t1);
-        results[i] = elapsed.count();
-        // a_random_double = unif(re);
-        // results[i] = a_random_double;
-
+        results[i] = time_single_request();
     }
     return results;
 }
@@ -113,3 +115,11 @@ std::pair<double, double> Driver::baseline_performance(int nreq) {
     double throughput = nreq / total_latency * std::milli::den;
     return std::make_pair(percentile, throughput);
 }
+
+// std::pair<double, double> Driver::threaded_performance(int nreq) {
+//     std::vector<std::thread> threads(nreq);
+//     for(int i = 0; i < nreq; i++) {
+//         threads[i] = std::thread(baseline_latencies, nreq);
+//     }
+//
+// }
