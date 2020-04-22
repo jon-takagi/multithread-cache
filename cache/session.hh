@@ -67,12 +67,12 @@ class session : public std::enable_shared_from_this<session>
     http::request<http::string_body> req_;
     std::shared_ptr<void> res_;
     helper helper_;
-    request_processor processor_;
+    const request_processor* processor_;
     Cache*server_cache_;
 
 public:
     // Take ownership of the stream
-    session( tcp::socket&& socket, Cache* cache, request_processor rp):
+    session( tcp::socket&& socket, Cache* cache, const request_processor* rp):
         stream_(std::move(socket)),
         helper_(*this)
     {
@@ -109,10 +109,10 @@ public:
         }
 
         if(ec)
-            return processor_.fail(ec, "read");
+            return processor_->fail(ec, "read");
 
         // Send the response
-        http::response<http::string_body> res = processor_.handle_request(std::move(req_), server_cache_);
+        http::response<http::string_body> res = processor_->handle_request(std::move(req_), server_cache_);
         helper_.send(std::move(res));
     }
 
@@ -125,7 +125,7 @@ public:
         boost::ignore_unused(bytes_transferred);
 
         if(ec)
-            return processor_.fail(ec, "write");
+            return processor_->fail(ec, "write");
 
         if(close)
         {

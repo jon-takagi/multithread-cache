@@ -69,8 +69,8 @@ int main(int ac, char* av[])
         Cache server_cache(maxmem, 0.75, evictor);
         Cache* server_cache_p = &server_cache;
         boost::asio::io_context ioc{threads};
-        request_processor helper;
-        std::make_shared<tcp_listener>(ioc, tcp::endpoint{server, tcp_port}, server_cache_p, helper)->run();
+        const request_processor helper;
+        std::make_shared<tcp_listener>(ioc, tcp::endpoint{server, tcp_port}, server_cache_p, &helper)->run();
 
         std::vector<std::thread> v;
         v.reserve(threads - 1);

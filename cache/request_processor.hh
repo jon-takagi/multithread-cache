@@ -4,16 +4,22 @@
 #include "kv_json.hh"
 #include <boost/beast/version.hpp>
 #include <boost/beast/http.hpp>
+#include <mutex>
+#include <shared_mutex>
 
 namespace beast = boost::beast;         // from <boost/beast.hpp>
 namespace http = beast::http;           // from <boost/beast/http.hpp>
 
 class request_processor {
+private:
+    mutable std::shared_mutex mutex_;
+    //std::shared_lock lock(mutex_);
+    //std::unique_lock lock(mutex_);
 public:
-    void fail(boost::beast::error_code ec, char const* what) {
+    void fail(boost::beast::error_code ec, char const* what) const {
         std::cerr << what << ": " << ec.message() << "\n";
     }
-    http::response<http::string_body> server_error(http::request<http::string_body> req, std::string message) {
+    http::response<http::string_body> server_error(http::request<http::string_body> req, std::string message) const {
         http::response<http::string_body> res{http::status::internal_server_error, req.version()};
         res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
         res.set(http::field::content_type, "text/html");
@@ -22,7 +28,7 @@ public:
         res.prepare_payload();
         return res;
     }
-    http::response<http::string_body> bad_request(http::request<http::string_body> req) {
+    http::response<http::string_body> bad_request(http::request<http::string_body> req) const {
         http::response<http::string_body> res{http::status::bad_request, req.version()};
         res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
         res.set(http::field::content_type, "text/html");
@@ -31,7 +37,7 @@ public:
         res.prepare_payload();
         return res;
     }
-    http::response<http::string_body> not_found(http::request<http::string_body> req, std::string target) {
+    http::response<http::string_body> not_found(http::request<http::string_body> req, std::string target) const {
         http::response<http::string_body> res{http::status::not_found, req.version()};
         res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
         res.set(http::field::content_type, "text/html");
@@ -40,7 +46,7 @@ public:
         res.prepare_payload();
         return res;
     }
-    http::response<http::string_body> handle_request(http::request<http::string_body> req, Cache* server_cache) {
+    http::response<http::string_body> handle_request(http::request<http::string_body> req, Cache* server_cache) const {
         //std::cout << "handling request" << std::endl;
         //std::cout << "\t request method: " << req.method() << std::endl;
         //std::cout << "\t request target: " << req.target() << std::endl;
@@ -60,8 +66,9 @@ public:
           key_type key = std::string(req.target()).substr(1); //make a string and slice off the "/"" from the target
           Cache::size_type size;
           //std::cout << "getting..." << key << std::endl;
-
+          std::shared_lock lock(mutex_);
           Cache::val_type ret_val = server_cache->get(key, size);
+          lock.unlock();
           if(ret_val == nullptr){
               //std::cout << "not found" << std::endl;
               return not_found(req, key);
@@ -100,12 +107,16 @@ public:
             bool key_created = false;
             Cache::size_type size = 0;
             //We then check if the key is already in the Cache (need for status code) and then set the value
+            std::shared_lock lock(mutex_);
             if(server_cache->get(key_str, size) == nullptr){
                 key_created = true;
             }
+            lock.unlock();
             size = val_str.length()+1;
             //std::cout << "setting...";
+            std::unique_lock write_lock(mutex_);
             server_cache->set(key, val, size);
+            write_lock.unlock();
             //std::cout << "done" << std::endl;
             //Now we can create and send the response
             res.set(boost::beast::http::field::content_location, "/" + key_str);
@@ -125,7 +136,9 @@ public:
         if(req.method() == http::verb::delete_) {
             key_type key = std::string(req.target()).substr(1);
             //std::cout << "deleting " << key << "...";
+            std::unique_lock lock(mutex_);
             auto success = server_cache->del(key);
+            lock.unlock();
             if(success){
                 //std::cout << "done" << std::endl;
                 res.result(boost::beast::http::status::ok);
@@ -143,7 +156,9 @@ public:
             res.result(http::status::ok);
             res.set(boost::beast::http::field::content_type, "application/json");
             res.set(boost::beast::http::field::accept, "application/json");
+            std::shared_lock lock(mutex_);
             res.insert("Space-Used", server_cache->space_used());
+            lock.unlock();
             res.prepare_payload();
             return res;
         }
@@ -155,7 +170,9 @@ public:
             //Resets the cache and sends back a basic response with string body
 
             //std::cout << "resetting the cache";
+            std::unique_lock lock(mutex_);
             server_cache->reset();
+            lock.unlock();
             //std::cout << "done" << std::endl;
             http::response<boost::beast::http::string_body> res;
             res.result(boost::beast::http::status::ok);
