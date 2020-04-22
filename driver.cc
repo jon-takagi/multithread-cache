@@ -68,7 +68,7 @@ void Driver::reset()
 // warm generates new data and adds to vector until cache has gotten at least size total data
 }
 
-double time_single_request() {
+double Driver::time_single_request() {
     std::chrono::time_point<std::chrono::high_resolution_clock> t1;
     std::chrono::time_point<std::chrono::high_resolution_clock> t2;
     Request req = gen_.gen_req(false);
@@ -116,10 +116,39 @@ std::pair<double, double> Driver::baseline_performance(int nreq) {
     return std::make_pair(percentile, throughput);
 }
 
-// std::pair<double, double> Driver::threaded_performance(int nreq) {
-//     std::vector<std::thread> threads(nreq);
-//     for(int i = 0; i < nreq; i++) {
-//         threads[i] = std::thread(baseline_latencies, nreq);
-//     }
-//
-// }
+void  Driver::do_nreq_requests(int nreq, std::promise<std::vector<double>> *promObj)
+{
+    std::vector<double> results(nreq, -1.0);
+    for(int i = 0; i < nreq; i++ ) {
+        results[i] = time_single_request();
+    }
+    promObj->set_value(results);
+}
+
+std::pair<double, double> Driver::threaded_performance(int nthreads, int nreq) {
+    std::vector<std::thread> threads(nreq);
+    std::vector<std::promise<std::vector<double>>> promises(nthreads);
+    std::vector<std::future<std::vector<double>>> futures(nthreads);
+    std::vector<std::vector<double>> results(nthreads, std::vector<double>(nreq));
+    for(int i = 0; i < nthreads; i++){
+        futures[i] = promises[i].get_future();
+        threads.push_back(std::thread(&Driver::do_nreq_requests, this, nreq, &(promises[i])));
+        threads[i].join();
+    }
+
+    for(int i = 0; i < nthreads; i++ ) {
+        results[i] = futures[i].get();
+    }
+
+    std::vector<double> big_results(nthreads * nreq, 0.0);
+    for(int i = 0; i < nthreads; i++) {
+        for(int j = 0; j < nreq; j++) {
+            big_results[i * nreq + j] = results[i][j];
+        }
+    }
+    double percentile = big_results[.95 *  nreq * nthreads];
+    double total_latency = std::accumulate(big_results.begin(), big_results.end(), 0);
+    double throughput = (nreq * nthreads) / total_latency * std::milli::den;
+    return std::make_pair(percentile, throughput);
+
+}
