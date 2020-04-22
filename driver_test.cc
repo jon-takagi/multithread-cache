@@ -8,6 +8,7 @@
 
 const int CACHE_SIZE = 8192;
 const int TRIALS = 1000000;
+const int THREADS = 8;
 Generator gen = Generator(8, 0.2, CACHE_SIZE, 8);
 
 auto test_cache = Cache("127.0.0.1", "42069"); //Add the appropriate params here once chosen
@@ -94,9 +95,9 @@ TEST_CASE("prep_data") {
 }
 
 TEST_CASE("performance") {
-    SECTION("part a") {
+    SECTION("multithreaded") {
         driver.warm(CACHE_SIZE);
-        auto results = driver.baseline_performance(TRIALS);
+        auto results = driver.threaded_performance(THREADS, TRIALS);
         std::cout << "95th percentile latency: " << results.first << "ms"<< std::endl;
         std::cout << "mean throughput: " << results.second << "req/s" << std::endl;
     }

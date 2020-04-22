@@ -1,6 +1,10 @@
 #include "cache/cache.hh"
 #include "gen.hh"
 #include <chrono>
+#include <thread>
+#include <vector>
+#include <future>
+#include <algorithm>
 
 //The driver class creates a networked cache, then runs commands on it
 //It can call set, get, or delete, and the params can be adjusted to emulate the ETC workload
@@ -9,6 +13,8 @@ class Driver {
     private:
         Cache* cache_;
         Generator gen_;
+        double time_single_request();
+        void do_nreq_requests(int nreq, std::promise<std::vector<double>> *promObj);
 
     public:
         Driver(Cache* cache, Generator gen);
@@ -41,4 +47,5 @@ class Driver {
 
         std::pair<double, double> baseline_performance(int nreq);
 
+        std::pair<double, double> threaded_performance(int nthreads, int nreq);
 };
