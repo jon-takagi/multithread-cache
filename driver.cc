@@ -68,7 +68,7 @@ void Driver::reset()
 // warm generates new data and adds to vector until cache has gotten at least size total data
 }
 
-double Driver::time_single_request() {
+double time_single_request(Generator gen_, Cache* cache_) {
     std::chrono::time_point<std::chrono::high_resolution_clock> t1;
     std::chrono::time_point<std::chrono::high_resolution_clock> t2;
     Request req = gen_.gen_req(false);
@@ -95,13 +95,21 @@ double Driver::time_single_request() {
     return elapsed.count();
 }
 
+void do_nreq_requests(Generator gen_, Cache* cache_, int nreq, std::promise<std::vector<double>> *promObj)
+{
+    std::vector<double> results(nreq, -1.0);
+    for(int i = 0; i < nreq; i++ ) {
+        results[i] = time_single_request(gen_, cache_);
+    }
+    promObj->set_value(results);
+}
 
 // param: number of requests to make
 // return: vector containing the time for each measurement
 std::vector<double> Driver::baseline_latencies(int nreq) {
     std::vector<double> results(nreq);
     for(int i = 0; i < nreq; i++) {
-        results[i] = time_single_request();
+        results[i] = time_single_request(gen_, cache_);
     }
     return results;
 }
@@ -116,39 +124,36 @@ std::pair<double, double> Driver::baseline_performance(int nreq) {
     return std::make_pair(percentile, throughput);
 }
 
-void  Driver::do_nreq_requests(int nreq, std::promise<std::vector<double>> *promObj)
-{
-    std::vector<double> results(nreq, -1.0);
-    for(int i = 0; i < nreq; i++ ) {
-        results[i] = time_single_request();
-    }
-    promObj->set_value(results);
-}
 
 std::pair<double, double> Driver::threaded_performance(int nthreads, int nreq) {
     std::vector<std::thread> threads(nreq);
     std::vector<std::promise<std::vector<double>>> promises(nthreads);
     std::vector<std::future<std::vector<double>>> futures(nthreads);
     std::vector<std::vector<double>> results(nthreads, std::vector<double>(nreq));
+
+    std::cout << nthreads << "\t" << nreq << std::endl;
     for(int i = 0; i < nthreads; i++){
         futures[i] = promises[i].get_future();
-        threads.push_back(std::thread(&Driver::do_nreq_requests, this, nreq, &(promises[i])));
+        threads.push_back(std::thread(do_nreq_requests, gen_, cache_, nreq, &(promises[i])));
         threads[i].join();
     }
-
+    //
     for(int i = 0; i < nthreads; i++ ) {
         results[i] = futures[i].get();
     }
+    //
+    // std::vector<double> big_results(nthreads * nreq, 0.0);
+    // for(int i = 0; i < nthreads; i++) {
+    //     for(int j = 0; j < nreq; j++) {
+    //         big_results[i * nreq + j] = results[i][j];
+    //     }
+    // }
+    // double percentile = big_results[.95 *  nreq * nthreads];
+    // double total_latency = std::accumulate(big_results.begin(), big_results.end(), 0);
+    // double throughput = (nreq * nthreads) / total_latency * std::milli::den;
 
-    std::vector<double> big_results(nthreads * nreq, 0.0);
-    for(int i = 0; i < nthreads; i++) {
-        for(int j = 0; j < nreq; j++) {
-            big_results[i * nreq + j] = results[i][j];
-        }
-    }
-    double percentile = big_results[.95 *  nreq * nthreads];
-    double total_latency = std::accumulate(big_results.begin(), big_results.end(), 0);
-    double throughput = (nreq * nthreads) / total_latency * std::milli::den;
+    double percentile = -1.0;
+    double throughput = -2.0;
     return std::make_pair(percentile, throughput);
 
 }

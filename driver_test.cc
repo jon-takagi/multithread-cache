@@ -76,6 +76,8 @@ TEST_CASE("Hitrate")
 
     driver.reset();
 }
+
+
 TEST_CASE("prep_data") {
     SECTION("graph") {
         driver.warm(CACHE_SIZE);
@@ -102,4 +104,18 @@ TEST_CASE("performance") {
         std::cout << "mean throughput: " << results.second << "req/s" << std::endl;
     }
     driver.reset();
+}
+TEST_CASE("part1"){
+    SECTION("data") {
+        std::ofstream output;
+        output.open("part1.dat");
+        for(int i = 0; i < 8; i++) {
+            driver.warm(CACHE_SIZE);
+            auto results = driver.threaded_performance(i, TRIALS);
+            output << results.first << "\t" << results.second << std::endl;
+            driver.reset();
+        }
+        output.close();
+
+    }
 }

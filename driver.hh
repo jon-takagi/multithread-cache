@@ -13,9 +13,6 @@ class Driver {
     private:
         Cache* cache_;
         Generator gen_;
-        double time_single_request();
-        void do_nreq_requests(int nreq, std::promise<std::vector<double>> *promObj);
-
     public:
         Driver(Cache* cache, Generator gen);
 
@@ -48,4 +45,5 @@ class Driver {
         std::pair<double, double> baseline_performance(int nreq);
 
         std::pair<double, double> threaded_performance(int nthreads, int nreq);
+
 };
