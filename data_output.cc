@@ -71,7 +71,7 @@ int main()
 {
     const int CACHE_SIZE = 8192;
     const int TRIALS = 1000000;
-    const int THREADS = 8;
+    const int THREADS = 2;
     Generator gen = Generator(8, 0.2, CACHE_SIZE, 8);
     auto test_cache = Cache("127.0.0.1", "42069");
 
@@ -86,6 +86,8 @@ int main()
     for(int i = 0; i < THREADS; i++){
         futures[i] = promises[i].get_future();
         threads.push_back(std::thread(do_nreq_requests, gen, &test_cache, TRIALS, &(promises[i])));
+    }
+    for(int i = 0; i < THREADS; i++) {
         threads[i].join();
     }
 

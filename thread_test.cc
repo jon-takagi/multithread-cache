@@ -122,9 +122,10 @@ int main()
     for(int i = 0; i < THREADS; i++){
         futures[i] = promises[i].get_future();
         threads.push_back(std::thread(do_nreq_requests, gen, &test_cache, TRIALS, &(promises[i])));
+    }
+    for(int i = 0; i < THREADS; i++) {
         threads[i].join();
     }
-
     for(int i = 0; i < THREADS; i++ ) {
         results[i] = futures[i].get();
     }
