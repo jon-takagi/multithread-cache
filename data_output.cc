@@ -87,8 +87,46 @@ void do_nreq_requests(Generator gen_, Cache* cache_, int nreq, std::promise<std:
 
 int main()
 {
-    // for num_threads in 1-8:
-        // copy code from thread_test.cc
-        // output << num_threads << "\t" << percentile << "\t" << latency << std::endl;
+    const int CACHE_SIZE = 8192;
+    const int TRIALS = 1000000;
+    const int THREADS = 1;
+    Generator gen = Generator(8, 0.2, CACHE_SIZE, 8);
+    auto test_cache = Cache("127.0.0.1", "42069");
+
+    // std::ofstream output;
+    // output.open("part1.dat");
+    std::cout << "threads: " << THREADS << std::endl;
+
+    std::vector<std::thread> threads;
+    std::vector<std::promise<std::vector<double>>> promises(THREADS);
+    std::vector<std::future<std::vector<double>>> futures(THREADS);
+    std::vector<std::vector<double>> results(THREADS, std::vector<double>(TRIALS));
+    for(int i = 0; i < THREADS; i++){
+        futures[i] = promises[i].get_future();
+        threads.push_back(std::thread(do_nreq_requests, gen, &test_cache, TRIALS, &(promises[i])));
+        //threads[i].join();
+    }
+    for(int i = 0; i < THREADS; i++){
+        threads[i].join();
+    }
+
+    for(int i = 0; i < THREADS; i++ ) {
+        results[i] = futures[i].get();
+    }
+
+    std::vector<double> big_results(THREADS * TRIALS, 0.0);
+    for(int i = 0; i < THREADS; i++) {
+        for(int j = 0; j < THREADS; j++) {
+            big_results[i * THREADS + j] = results[i][j];
+        }
+    }
+    double percentile = big_results[.95 *  TRIALS * THREADS];
+    double total_latency = std::accumulate(big_results.begin(), big_results.end(), 0);
+    double throughput = (TRIALS * THREADS) / total_latency * std::milli::den;
+    std::cout << "\t" << "95th percentile: " << percentile << "ms" << std::endl;
+    std::cout << "\t" << "througput: " << throughput << " req/second" << std::endl;
+    // output << t << "\t" << percentile << "\t" << throughput << std::endl;
+
+    // output.close();
     return 0;
 }

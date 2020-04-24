@@ -14,6 +14,7 @@
 #include "cache.hh"
 #include "kv_json.hh"
 #include <boost/array.hpp>
+#include <mutex>
 //
 namespace beast = boost::beast;     // from <boost/beast.hpp>
 namespace http = beast::http;       // from <boost/beast/http.hpp>
@@ -33,6 +34,7 @@ public:
     udp::endpoint sender_endpoint_;
     udp::endpoint receiver_endpoint_;
     udp::socket* udp_socket_;
+    std::mutex mutex_;
 
     http::request<http::string_body> prep_req(http::verb method, std::string target, std::string port) {
         http::request<http::string_body> req;
@@ -49,10 +51,12 @@ public:
 
     http::response<http::dynamic_body> send_tcp(http::request<http::string_body> req) {
         try{
+            mutex_.lock();
             http::write(*tcp_stream_, req);
             beast::flat_buffer buffer;
             http::response<http::dynamic_body> res;
             http::read(*tcp_stream_, buffer, res);
+            mutex_.unlock();
             return res;
         }
         catch(std::exception const& e){
@@ -60,11 +64,12 @@ public:
             http::response<http::dynamic_body> res;
             res.result(499);
             res.insert("error: ", e.what());
+            mutex_.unlock();
             return res;
         }
     }
 
-
+    //NOTE: for HW6, this function is not updated with mutex locking, since it is no longer called
     //Sends a request in UDP, used for get. To make it "most comaptible" with earlier code,
     //It still takes an http body for params and returns, but just converts that to and from
     //a plain udp message.
@@ -152,18 +157,16 @@ void Cache::set(key_type key, val_type val, size_type size) {
 //it tcp compatible again easily
 Cache::val_type Cache::get(key_type key, size_type& val_size) const{
     //GET /key
-    std::cout << "getting: " << key << std::endl;
     http::request<http::string_body> req = pImpl_->prep_req(http::verb::get, "/"+key, pImpl_->tcp_port_);
     http::response<http::dynamic_body> res = pImpl_->send_tcp(req);//changed back to tcp since UDP lacks timeout and may not be funcitonal
     if(res.result() == http::status::not_found){
         return nullptr;
     }
-
     std::string data_str = boost::beast::buffers_to_string(res.body().data());
     kv_json kv(data_str);
     //Here's the hacky workaround to make sure we don't lose the memory our return val points to
     //val_type val = kv.value_ would lose the data once kv was destroyed
-    std::cout << kv.value_ << " has length " << strlen(kv.value_) << std::endl;
+    //std::cout << kv.value_ << " has length " << strlen(kv.value_) << std::endl;
     std::string string_holder(kv.value_);
     val_type val = const_cast<char*>(string_holder.c_str());
 
