@@ -34,7 +34,7 @@ public:
     udp::endpoint sender_endpoint_;
     udp::endpoint receiver_endpoint_;
     udp::socket* udp_socket_;
-    std::mutex mutex_;
+    //std::mutex mutex_;
 
     http::request<http::string_body> prep_req(http::verb method, std::string target, std::string port) {
         http::request<http::string_body> req;
@@ -51,12 +51,12 @@ public:
 
     http::response<http::dynamic_body> send_tcp(http::request<http::string_body> req) {
         try{
-            mutex_.lock();
+            //mutex_.lock();
             http::write(*tcp_stream_, req);
             beast::flat_buffer buffer;
             http::response<http::dynamic_body> res;
             http::read(*tcp_stream_, buffer, res);
-            mutex_.unlock();
+            //mutex_.unlock();
             return res;
         }
         catch(std::exception const& e){
@@ -64,7 +64,7 @@ public:
             http::response<http::dynamic_body> res;
             res.result(499);
             res.insert("error: ", e.what());
-            mutex_.unlock();
+            //mutex_.unlock();
             return res;
         }
     }
