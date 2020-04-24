@@ -5,7 +5,7 @@ OBJ=$(SRC:.cc=.o)
 BUILDDIR=out/
 VPATH=cache/:out/
 
-all: server.bin test_driver.bin perf_test.bin data_pt1.bin
+all: server.bin perf_test.bin data_pt1.bin
 
 $(BUILDDIR)%.o: %.cc
 	$(CXX) $(CXXFLAGS) $(OPTFLAGS) -c $< -o $@
@@ -16,9 +16,6 @@ clean:
 
 server.bin: $(BUILDDIR)cache_lib.o $(BUILDDIR)fifo_evictor.o $(BUILDDIR)tcp_listener.o
 	$(CXX) $(LDFLAGS) -o $@ cache/cache_server.cc  $^ /vagrant/systems/boost/lib/libboost_program_options.a
-
-test_driver.bin: $(BUILDDIR)fifo_evictor.o $(BUILDDIR)driver.o $(BUILDDIR)gen.o $(BUILDDIR)cache_client.o
-	$(CXX) $(LDFLAGS) -o $@ driver_test.cc  $^
 
 perf_test.bin:  $(BUILDDIR)fifo_evictor.o $(BUILDDIR)gen.o $(BUILDDIR)cache_client.o
 	$(CXX) $(LDFLAGS) -o $@ thread_test.cc  $^
