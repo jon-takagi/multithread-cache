@@ -44,6 +44,7 @@ Numeric random(Numeric from, Numeric to)
 
 
 double time_single_request(Generator gen_, Cache* cache_) {
+    std::cout << "thread " << std::this_thread::get_id() << " running" << std::endl;
     std::chrono::time_point<std::chrono::high_resolution_clock> t1;
     std::chrono::time_point<std::chrono::high_resolution_clock> t2;
     Request req = gen_.gen_req(false);
@@ -66,6 +67,7 @@ double time_single_request(Generator gen_, Cache* cache_) {
     // std::cout << std::get<2>(req) << " [key: " << std::get<0>(req) << ", val: " << std::get<1>(req) <<"]"<< std::endl;
         t2 = std::chrono::high_resolution_clock::now();
     }
+    std::cout << std::endl;
     std::chrono::duration<double, std::milli> elapsed = std::chrono::duration_cast<std::chrono::duration<double, std::milli>> (t2-t1);
     return elapsed.count();
 }
@@ -76,19 +78,19 @@ void do_nreq_requests(Generator gen_, Cache* cache_, int nreq, std::promise<std:
     std::vector<double> results(nreq, -1.0);
     for(int i = 0; i < nreq; i++ ) {
         results[i] = time_single_request(gen_, cache_);
-        if(i % (nreq / 100) == 0) {
-            std::cout << ".";
-        }
+        // if(i % (nreq / 100) == 0) {
+        //     std::cout << ".";
+        // }
     }
-    std::cout << std::endl << "returning" << std::endl;
+    std::cout << "thread " << std::this_thread::get_id() << " done" << std::endl;
     promObj->set_value(results);
 }
 
 int main()
 {
     const int CACHE_SIZE = 8192;
-    const int TRIALS = 10000;
-    const int THREADS = 8;
+    const int TRIALS = 10;
+    const int THREADS = 2;
     Generator gen = Generator(8, 0.2, CACHE_SIZE, 8);
     auto test_cache = Cache("127.0.0.1", "42069");
 
