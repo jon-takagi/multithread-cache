@@ -4,9 +4,26 @@
 #include <random>
 #include <future>
 #include <algorithm>
-
+#include <fstream>
 #include "gen.hh"
+#include <string.h>
 
+void warm(Generator gen_, Cache* cache_, int size)
+{
+    int sets = 0;
+    while(sets < size) {
+        Request req = gen_.gen_req(false, true);
+        if(req.method_ == "set") {
+            std::string val_str = std::string(req.val_size_, 'B');
+            //Cache::val_type val = val_str.c_str();
+            char* val = new char [req.val_size_+1];
+            strcpy(val, val_str.c_str());
+            cache_->set(req.key_, val, req.val_size_+1);
+            delete[] val;
+            sets += 1;
+        }
+    }
+}
 
 template<typename Numeric, typename Generator = std::mt19937>
 Numeric random(Numeric from, Numeric to)
@@ -67,46 +84,6 @@ void do_nreq_requests(Generator gen_, Cache* cache_, int nreq, std::promise<std:
     promObj->set_value(results);
 }
 
-// int main() {
-//     const int CACHE_SIZE = 8192;
-//     const int TRIALS = 10000;
-//     // const int THREADS = 1;
-//     Generator gen = Generator(8, 0.2, CACHE_SIZE, 8);
-//     auto test_cache = Cache("127.0.0.1", "42069");
-//
-//
-//
-//     std::promise<std::vector<double>> promise_0;
-//     // std::promise<std::vector<double>> promise_1;
-//     std::future <std::vector<double>> future_0;
-//     // std::future <std::vector<double>> future_1;
-//     std::vector<double> result_0(TRIALS);
-//     // std::vector<double> result_1(nreq);
-//
-//     future_0 = promise_0.get_future();
-//     // future_1 = promise_1.get_future();
-//
-//     std::cout << "creating thread 0" << std::endl;
-//     std::thread thread_0(do_nreq_requests, gen, &test_cache, TRIALS, &promise_0);
-//     // std::thread thread_1(do_nreq_requests, nreq, &promise_1);
-//     thread_0.join();
-//     std::cout << "back in main" << std::endl;
-//     // thread_1.join();
-//     result_0 = future_0.get();
-//     // result_1 = future_1.get();
-//
-//     std::cout << result_0[0] << std::endl;
-//     // std::cout << result_1[0] << std::endl;
-//     return 0;
-// }
-    // driver.warm(CACHE_SIZE);
-    // std::promise<std::vector<double>> promise;
-    // std::thread(do_nreq_requests, gen, &test_cache, TRIALS, &(promises[i]));
-    // // auto results = driver.threaded_performance(THREADS, TRIALS);
-    // std::cout << "95th percentile latency: " << results.first << "ms"<< std::endl;
-    // std::cout << "mean throughput: " << results.second << "req/s" << std::endl;
-    // return 0;
-    //
 int main()
 {
     const int CACHE_SIZE = 8192;
@@ -114,6 +91,8 @@ int main()
     const int THREADS = 8;
     Generator gen = Generator(8, 0.2, CACHE_SIZE, 8);
     auto test_cache = Cache("127.0.0.1", "42069");
+
+    warm(gen, &test_cache, CACHE_SIZE);
 
     std::vector<std::thread> threads;
     std::vector<std::promise<std::vector<double>>> promises(THREADS);
