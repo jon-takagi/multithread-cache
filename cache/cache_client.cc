@@ -152,8 +152,8 @@ void Cache::set(key_type key, val_type val, size_type size) {
 //it tcp compatible again easily
 Cache::val_type Cache::get(key_type key, size_type& val_size) const{
     //GET /key
-
-    http::request<http::string_body> req = pImpl_->prep_req(http::verb::get, "/"+key, pImpl_->udp_port_);
+    std::cout << "getting: " << key << std::endl;
+    http::request<http::string_body> req = pImpl_->prep_req(http::verb::get, "/"+key, pImpl_->tcp_port_);
     http::response<http::dynamic_body> res = pImpl_->send_tcp(req);//changed back to tcp since UDP lacks timeout and may not be funcitonal
     if(res.result() == http::status::not_found){
         return nullptr;
@@ -163,6 +163,7 @@ Cache::val_type Cache::get(key_type key, size_type& val_size) const{
     kv_json kv(data_str);
     //Here's the hacky workaround to make sure we don't lose the memory our return val points to
     //val_type val = kv.value_ would lose the data once kv was destroyed
+    std::cout << kv.value_ << " has length " << strlen(kv.value_) << std::endl;
     std::string string_holder(kv.value_);
     val_type val = const_cast<char*>(string_holder.c_str());
 
