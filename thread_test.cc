@@ -89,8 +89,8 @@ void do_nreq_requests(Generator gen_, Cache* cache_, int nreq, std::promise<std:
 int main()
 {
     const int CACHE_SIZE = 8192;
-    const int TRIALS = 10;
-    const int THREADS = 2;
+    const int TRIALS = 1000;
+    const int THREADS = 8;
     Generator gen = Generator(8, 0.2, CACHE_SIZE, 8);
     auto test_cache = Cache("127.0.0.1", "42069");
 
