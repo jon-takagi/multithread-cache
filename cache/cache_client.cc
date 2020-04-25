@@ -34,7 +34,7 @@ public:
     udp::endpoint sender_endpoint_;
     udp::endpoint receiver_endpoint_;
     udp::socket* udp_socket_;
-    std::mutex mutex_;
+    //std::mutex mutex_;
 
     http::request<http::string_body> prep_req(http::verb method, std::string target, std::string port) {
         http::request<http::string_body> req;
@@ -51,12 +51,14 @@ public:
 
     http::response<http::dynamic_body> send_tcp(http::request<http::string_body> req) {
         try{
-            mutex_.lock();
+            //mutex_.lock();
             http::write(*tcp_stream_, req);
             beast::flat_buffer buffer;
             http::response<http::dynamic_body> res;
+            //std::cout << "reading: waiting" << std::endl;
             http::read(*tcp_stream_, buffer, res);
-            mutex_.unlock();
+            //std::cout << "reading: finished" << std::endl;
+            //mutex_.unlock();
             return res;
         }
         catch(std::exception const& e){
@@ -64,7 +66,7 @@ public:
             http::response<http::dynamic_body> res;
             res.result(499);
             res.insert("error: ", e.what());
-            mutex_.unlock();
+            //mutex_.unlock();
             return res;
         }
     }
@@ -157,6 +159,7 @@ void Cache::set(key_type key, val_type val, size_type size) {
 //it tcp compatible again easily
 Cache::val_type Cache::get(key_type key, size_type& val_size) const{
     //GET /key
+    //std::cout << "getting" << std::endl;
     http::request<http::string_body> req = pImpl_->prep_req(http::verb::get, "/"+key, pImpl_->tcp_port_);
     http::response<http::dynamic_body> res = pImpl_->send_tcp(req);//changed back to tcp since UDP lacks timeout and may not be funcitonal
     if(res.result() == http::status::not_found){

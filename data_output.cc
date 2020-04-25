@@ -51,7 +51,7 @@ double time_single_request(Generator gen_, Cache* cache_) {
     Cache::size_type size = 0;
     std::string val_str = std::string(req.val_size_, 'B');
     Cache::val_type val = val_str.c_str();
-    if(req.method_ =="get") {
+    if(req.method_ == "get") {
         t1 = std::chrono::high_resolution_clock::now();
         cache_->get(req.key_, size);
     // std::cout << std::get<2>(req) << " [key: " << std::get<0>(req) << ", val: " << std::get<1>(req) <<"]"<< std::endl;

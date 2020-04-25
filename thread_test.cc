@@ -67,7 +67,6 @@ int main()
     const int TRIALS = 10;
     const int THREADS = 2;
     Generator gen = Generator(8, 0.2, CACHE_SIZE, 8);
-
     std::vector<std::thread> threads;
     std::vector<Cache*> clients(THREADS, 0x0);
     std::vector<std::promise<std::vector<double>>> promises(THREADS);
@@ -77,7 +76,9 @@ int main()
         Cache client = new Cache("127.0.0.1", "42069");
         warm(gen, client, CACHE_SIZE);
         futures[i] = promises[i].get_future();
-        threads.push_back(std::thread(do_nreq_requests, gen, client, TRIALS, &(promises[i])));
+        auto test_cache = new Cache("127.0.0.1", "42069");
+        warm(gen, test_cache, CACHE_SIZE/THREADS);
+        threads.push_back(std::thread(do_nreq_requests, gen, test_cache, TRIALS, &(promises[i])));
     }
     for(int i = 0; i < THREADS; i++) {
         threads[i].join();
