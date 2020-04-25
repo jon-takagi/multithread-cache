@@ -17,31 +17,13 @@ void warm(Generator gen_, Cache* cache_, int size)
             std::string val_str = std::string(req.val_size_, 'B');
             //Cache::val_type val = val_str.c_str();
             char* val = new char [req.val_size_+1];
-            strcpy(val, val_str.c_str());
+            strcpy (val, val_str.c_str());
             cache_->set(req.key_, val, req.val_size_+1);
             delete[] val;
             sets += 1;
         }
     }
 }
-
-template<typename Numeric, typename Generator = std::mt19937>
-Numeric random(Numeric from, Numeric to)
-{
-    thread_local static Generator gen(std::random_device{}());
-
-    using dist_type = typename std::conditional
-    <
-        std::is_integral<Numeric>::value
-        , std::uniform_int_distribution<Numeric>
-        , std::uniform_real_distribution<Numeric>
-    >::type;
-
-    thread_local static dist_type dist;
-
-    return dist(gen, typename dist_type::param_type{from, to});
-}
-
 
 double time_single_request(Generator gen_, Cache* cache_) {
     std::chrono::time_point<std::chrono::high_resolution_clock> t1;
@@ -72,35 +54,29 @@ double time_single_request(Generator gen_, Cache* cache_) {
 
 void do_nreq_requests(Generator gen_, Cache* cache_, int nreq, std::promise<std::vector<double>> *promObj)
 {
-    std::cout << "timing " << nreq << " requests" << std::endl;
     std::vector<double> results(nreq, -1.0);
     for(int i = 0; i < nreq; i++ ) {
         results[i] = time_single_request(gen_, cache_);
-        if(i % (nreq / 100) == 0) {
-            std::cout << ".";
-        }
     }
-    std::cout << std::endl << "returning" << std::endl;
     promObj->set_value(results);
 }
 
 int main()
 {
     const int CACHE_SIZE = 8192;
-    const int TRIALS = 10000;
-    const int THREADS = 8;
+    const int TRIALS = 10;
+    const int THREADS = 4;
     Generator gen = Generator(8, 0.2, CACHE_SIZE, 8);
-    auto test_cache = Cache("127.0.0.1", "42069");
-
-    warm(gen, &test_cache, CACHE_SIZE);
-
     std::vector<std::thread> threads;
+    std::vector<Cache*> clients(THREADS, 0x0);
     std::vector<std::promise<std::vector<double>>> promises(THREADS);
     std::vector<std::future<std::vector<double>>> futures(THREADS);
     std::vector<std::vector<double>> results(THREADS, std::vector<double>(TRIALS));
     for(int i = 0; i < THREADS; i++){
         futures[i] = promises[i].get_future();
-        threads.push_back(std::thread(do_nreq_requests, gen, &test_cache, TRIALS, &(promises[i])));
+        clients[i] = new Cache("127.0.0.1", "42069");
+        warm(gen, clients[i], CACHE_SIZE/THREADS);
+        threads.push_back(std::thread(do_nreq_requests, gen, clients[i], TRIALS, &(promises[i])));
     }
     for(int i = 0; i < THREADS; i++) {
         threads[i].join();
