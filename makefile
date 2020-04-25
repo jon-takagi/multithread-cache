@@ -13,6 +13,7 @@ $(BUILDDIR)%.o: %.cc
 clean:
 	rm out/*.o
 	rm *.bin
+	rm *.dat
 
 server.bin: $(BUILDDIR)cache_lib.o $(BUILDDIR)fifo_evictor.o $(BUILDDIR)tcp_listener.o
 	$(CXX) $(LDFLAGS) -o $@ cache/cache_server.cc  $^ /vagrant/systems/boost/lib/libboost_program_options.a
@@ -20,5 +21,5 @@ server.bin: $(BUILDDIR)cache_lib.o $(BUILDDIR)fifo_evictor.o $(BUILDDIR)tcp_list
 perf_test.bin:  $(BUILDDIR)fifo_evictor.o $(BUILDDIR)gen.o $(BUILDDIR)cache_client.o
 	$(CXX) $(LDFLAGS) -o $@ thread_test.cc  $^
 
-data_pt1.bin:  $(BUILDDIR)fifo_evictor.o $(BUILDDIR)gen.o $(BUILDDIR)cache_client.o
-	$(CXX) $(LDFLAGS) -o $@ data_output.cc  $^
+data.bin:  $(BUILDDIR)fifo_evictor.o $(BUILDDIR)gen.o $(BUILDDIR)cache_client.o
+	$(CXX) $(LDFLAGS) -o $@ prep_data.cc  $^

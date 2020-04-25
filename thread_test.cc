@@ -64,22 +64,19 @@ void do_nreq_requests(Generator gen_, Cache* cache_, int nreq, std::promise<std:
 int main()
 {
     const int CACHE_SIZE = 8192;
-    const int TRIALS = 10;
-    const int THREADS = 4;
+    const int TRIALS = 1000;
+    const int THREADS = 2;
     Generator gen = Generator(8, 0.2, CACHE_SIZE, 8);
     std::vector<std::thread> threads;
     std::vector<Cache*> clients(THREADS, 0x0);
     std::vector<std::promise<std::vector<double>>> promises(THREADS);
     std::vector<std::future<std::vector<double>>> futures(THREADS);
-    std::vector<Cache> clients(num_threads);
     std::vector<std::vector<double>> results(THREADS, std::vector<double>(TRIALS));
     for(int i = 0; i < THREADS; i++){
         futures[i] = promises[i].get_future();
         clients[i] = new Cache("127.0.0.1", "42069");
         warm(gen, clients[i], CACHE_SIZE/THREADS);
         threads.push_back(std::thread(do_nreq_requests, gen, clients[i], TRIALS, &(promises[i])));
-    }
-    for(int i = 0; i < THREADS; i++) {
         threads[i].join();
     }
     for(int i = 0; i < THREADS; i++ ) {
