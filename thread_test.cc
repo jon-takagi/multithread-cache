@@ -64,7 +64,7 @@ void do_nreq_requests(Generator gen_, Cache* cache_, int nreq, std::promise<std:
 int main()
 {
     const int CACHE_SIZE = 8192;
-    const int TRIALS = 10;
+    const int TRIALS = 1000000;
     const int THREADS = 4;
     Generator gen = Generator(8, 0.2, CACHE_SIZE, 8);
     std::vector<std::thread> threads;

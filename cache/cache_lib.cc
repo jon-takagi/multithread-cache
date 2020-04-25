@@ -43,8 +43,9 @@ void Cache::set(key_type key, val_type val, size_type size) {
         }
     }
     byte_type *copy = new byte_type[size];
-    int i = 0;
+    unsigned i = 0;
     while(val[i] != '\0'){ //Searching for null terminator
+    //while(i <  size -1){ //Searching for null terminator
         copy[i] = val[i];
         i++;
     }
