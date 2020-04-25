@@ -25,24 +25,6 @@ void warm(Generator gen_, Cache* cache_, int size)
     }
 }
 
-template<typename Numeric, typename Generator = std::mt19937>
-Numeric random(Numeric from, Numeric to)
-{
-    thread_local static Generator gen(std::random_device{}());
-
-    using dist_type = typename std::conditional
-    <
-        std::is_integral<Numeric>::value
-        , std::uniform_int_distribution<Numeric>
-        , std::uniform_real_distribution<Numeric>
-    >::type;
-
-    thread_local static dist_type dist;
-
-    return dist(gen, typename dist_type::param_type{from, to});
-}
-
-
 double time_single_request(Generator gen_, Cache* cache_) {
     std::chrono::time_point<std::chrono::high_resolution_clock> t1;
     std::chrono::time_point<std::chrono::high_resolution_clock> t2;
@@ -92,11 +74,10 @@ int main()
     std::vector<std::future<std::vector<double>>> futures(THREADS);
     std::vector<std::vector<double>> results(THREADS, std::vector<double>(TRIALS));
     for(int i = 0; i < THREADS; i++){
-        Cache client = Cache("127.0.0.1", "42069");
-        clients[i] = &client;
-        warm(gen, clients[i], CACHE_SIZE);
+        Cache client = new Cache("127.0.0.1", "42069");
+        warm(gen, client, CACHE_SIZE);
         futures[i] = promises[i].get_future();
-        threads.push_back(std::thread(do_nreq_requests, gen, clients[i], TRIALS, &(promises[i])));
+        threads.push_back(std::thread(do_nreq_requests, gen, client, TRIALS, &(promises[i])));
     }
     for(int i = 0; i < THREADS; i++) {
         threads[i].join();
