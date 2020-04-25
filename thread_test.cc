@@ -71,7 +71,6 @@ int main()
     std::vector<Cache*> clients(THREADS, 0x0);
     std::vector<std::promise<std::vector<double>>> promises(THREADS);
     std::vector<std::future<std::vector<double>>> futures(THREADS);
-    std::vector<Cache> clients(num_threads);
     std::vector<std::vector<double>> results(THREADS, std::vector<double>(TRIALS));
     for(int i = 0; i < THREADS; i++){
         futures[i] = promises[i].get_future();
@@ -94,7 +93,6 @@ int main()
     }
     double percentile = big_results[.95 *  TRIALS * THREADS];
     std::cout << "95th percentile: " << percentile << "ms" << std::endl;
-
     return 0;
 }
 
