@@ -65,7 +65,7 @@ int main()
 {
     const int CACHE_SIZE = 8192;
     const int TRIALS = 10;
-    const int THREADS = 2;
+    const int THREADS = 4;
     Generator gen = Generator(8, 0.2, CACHE_SIZE, 8);
     std::vector<std::thread> threads;
     std::vector<Cache*> clients(THREADS, 0x0);
@@ -74,8 +74,6 @@ int main()
     std::vector<Cache> clients(num_threads);
     std::vector<std::vector<double>> results(THREADS, std::vector<double>(TRIALS));
     for(int i = 0; i < THREADS; i++){
-        Cache client = new Cache("127.0.0.1", "42069");
-        warm(gen, client, CACHE_SIZE);
         futures[i] = promises[i].get_future();
         clients[i] = new Cache("127.0.0.1", "42069");
         warm(gen, clients[i], CACHE_SIZE/THREADS);
@@ -96,6 +94,7 @@ int main()
     }
     double percentile = big_results[.95 *  TRIALS * THREADS];
     std::cout << "95th percentile: " << percentile << "ms" << std::endl;
+
     return 0;
 }
 
