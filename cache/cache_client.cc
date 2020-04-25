@@ -55,7 +55,9 @@ public:
             http::write(*tcp_stream_, req);
             beast::flat_buffer buffer;
             http::response<http::dynamic_body> res;
+            //std::cout << "reading: waiting" << std::endl;
             http::read(*tcp_stream_, buffer, res);
+            //std::cout << "reading: finished" << std::endl;
             //mutex_.unlock();
             return res;
         }
@@ -157,6 +159,7 @@ void Cache::set(key_type key, val_type val, size_type size) {
 //it tcp compatible again easily
 Cache::val_type Cache::get(key_type key, size_type& val_size) const{
     //GET /key
+    //std::cout << "getting" << std::endl;
     http::request<http::string_body> req = pImpl_->prep_req(http::verb::get, "/"+key, pImpl_->tcp_port_);
     http::response<http::dynamic_body> res = pImpl_->send_tcp(req);//changed back to tcp since UDP lacks timeout and may not be funcitonal
     if(res.result() == http::status::not_found){
