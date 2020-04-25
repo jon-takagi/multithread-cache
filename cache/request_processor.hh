@@ -66,7 +66,7 @@ public:
           key_type key = std::string(req.target()).substr(1); //make a string and slice off the "/"" from the target
           Cache::size_type size;
           //std::cout << "getting..." << key << std::endl;
-          std::shared_lock lock(mutex_);
+          std::unique_lock lock(mutex_);
           Cache::val_type ret_val = server_cache->get(key, size);
           lock.unlock();
           if(ret_val == nullptr){
@@ -107,7 +107,7 @@ public:
             bool key_created = false;
             Cache::size_type size = 0;
             //We then check if the key is already in the Cache (need for status code) and then set the value
-            std::shared_lock lock(mutex_);
+            std::unique_lock lock(mutex_);
             if(server_cache->get(key_str, size) == nullptr){
                 key_created = true;
             }
@@ -156,7 +156,7 @@ public:
             res.result(http::status::ok);
             res.set(boost::beast::http::field::content_type, "application/json");
             res.set(boost::beast::http::field::accept, "application/json");
-            std::shared_lock lock(mutex_);
+            std::unique_lock lock(mutex_);
             res.insert("Space-Used", server_cache->space_used());
             lock.unlock();
             res.prepare_payload();

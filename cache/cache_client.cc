@@ -55,9 +55,7 @@ public:
             http::write(*tcp_stream_, req);
             beast::flat_buffer buffer;
             http::response<http::dynamic_body> res;
-            std::cout << "reading: waiting" << std::endl;
             http::read(*tcp_stream_, buffer, res);
-            std::cout << "reading: finished" << std::endl;
             //mutex_.unlock();
             return res;
         }
