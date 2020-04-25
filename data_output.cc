@@ -73,60 +73,56 @@ double time_single_request(Generator gen_, Cache* cache_) {
 
 void do_nreq_requests(Generator gen_, Cache* cache_, int nreq, std::promise<std::vector<double>> *promObj)
 {
-    std::cout << "timing " << nreq << " requests" << std::endl;
     std::vector<double> results(nreq, -1.0);
     for(int i = 0; i < nreq; i++ ) {
         results[i] = time_single_request(gen_, cache_);
-        if(i % (nreq / 100) == 0) {
-            std::cout << ".";
-        }
     }
-    std::cout << std::endl << "returning" << std::endl;
     promObj->set_value(results);
 }
 
 int main()
 {
     const int CACHE_SIZE = 8192;
-    const int TRIALS = 1000000;
-    const int THREADS = 1;
+    const int TRIALS = 10000;
+    const int MAX_THREADS = 8;
     Generator gen = Generator(8, 0.2, CACHE_SIZE, 8);
-    auto test_cache = Cache("127.0.0.1", "42069");
 
-    // std::ofstream output;
-    // output.open("part1.dat");
-    std::cout << "threads: " << THREADS << std::endl;
+    std::ofstream output;
+    output.open("part1.dat");
+    for(int num_threads = 1; num_threads <= MAX_THREADS; num_threads++) {
 
-    std::vector<std::thread> threads;
-    std::vector<std::promise<std::vector<double>>> promises(THREADS);
-    std::vector<std::future<std::vector<double>>> futures(THREADS);
-    std::vector<std::vector<double>> results(THREADS, std::vector<double>(TRIALS));
-    for(int i = 0; i < THREADS; i++){
-        futures[i] = promises[i].get_future();
-        threads.push_back(std::thread(do_nreq_requests, gen, &test_cache, TRIALS, &(promises[i])));
-        //threads[i].join();
-    }
-    for(int i = 0; i < THREADS; i++){
-        threads[i].join();
-    }
-
-    for(int i = 0; i < THREADS; i++ ) {
-        results[i] = futures[i].get();
-    }
-
-    std::vector<double> big_results(THREADS * TRIALS, 0.0);
-    for(int i = 0; i < THREADS; i++) {
-        for(int j = 0; j < THREADS; j++) {
-            big_results[i * THREADS + j] = results[i][j];
+        std::vector<std::thread> threads;
+        std::vector<Cache> clients(num_threads);
+        std::vector<std::promise<std::vector<double>>> promises(num_threads);
+        std::vector<std::future<std::vector<double>>> futures(num_threads);
+        std::vector<std::vector<double>> results(num_threads, std::vector<double>(TRIALS));
+        for(int i = 0; i <num_threads; i++){
+            clients[i]("127.0.0.1", "42069");
+            warm(gen, &clients[i], CACHE_SIZE);
+            futures[i] = promises[i].get_future();
+            threads.push_back(std::thread(do_nreq_requests, gen, &clients[i], TRIALS, &(promises[i])));
         }
-    }
-    double percentile = big_results[.95 *  TRIALS * THREADS];
-    double total_latency = std::accumulate(big_results.begin(), big_results.end(), 0);
-    double throughput = (TRIALS * THREADS) / total_latency * std::milli::den;
-    std::cout << "\t" << "95th percentile: " << percentile << "ms" << std::endl;
-    std::cout << "\t" << "througput: " << throughput << " req/second" << std::endl;
-    // output << t << "\t" << percentile << "\t" << throughput << std::endl;
+        for(int i = 0; i <num_threads; i++) {
+            threads[i].join();
+        }
+        for(int i = 0; i <num_threads; i++ ) {
+            results[i] = futures[i].get();
+        }
 
-    // output.close();
+        std::vector<double> big_results(num_threads * TRIALS, 0.0);
+        for(int i = 0; i <num_threads; i++) {
+            for(int j = 0; j < TRIALS; j++) {
+                big_results[i * TRIALS + j] = results[i][j];
+            }
+        }
+        double percentile = big_results[.95 *  TRIALS *num_threads];
+
+        double total_latency = std::accumulate(big_results.begin(), big_results.end(), 0);
+        double throughput = (num_threads * TRIALS) / total_latency;
+
+        output << num_threads << "\t" << percentile << "\t" << throughput << std::endl;
+        std::cout << num_threads << " | " << total_latency << "\t" << percentile << "\t" << throughput << "\t" << std::endl;
+    }
+    output.close();
     return 0;
 }
