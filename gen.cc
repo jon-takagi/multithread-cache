@@ -75,7 +75,7 @@ Request Generator::gen_req(bool print_results, bool set_only)
         if(p < 21){
             method = "get";
         } else if (p < 30){
-            method = "delete";
+            method = "del";
             if(method_dist(rng) < 27){//8/9 of deletes should delete a nonexistent key to keep the cache full
                 int dummy_key_length = std::clamp((int)key_dist(rng), 15, 70);
                 if(print_results){

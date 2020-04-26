@@ -48,7 +48,7 @@ double time_single_request(Generator gen_, Cache* cache_) {
     // std::cout << std::get<2>(req) << " [key: " << std::get<0>(req) << ", val: " << std::get<1>(req) <<"]"<< std::endl;
         t2 = std::chrono::high_resolution_clock::now();
     }
-    std::chrono::duration<double, std::milli> elapsed = std::chrono::duration_cast<std::chrono::duration<double, std::milli>> (t2-t1);
+    std::chrono::duration<double, std::nano> elapsed = std::chrono::duration_cast<std::chrono::duration<double, std::nano>> (t2-t1);
     return elapsed.count();
 }
 
@@ -64,11 +64,13 @@ void do_nreq_requests(Generator gen_, Cache* cache_, int nreq, std::promise<std:
 int main()
 {
     const int CACHE_SIZE = 8192;
-    const int TRIALS = 1000;
+    const int TRIALS = 100000;
     const int MAX_T = 4;
 
     Generator gen = Generator(8, 0.2, CACHE_SIZE, 8);
 
+    std::ofstream output;
+    output.open("throughput.dat");
     for(int num_threads = 1; num_threads <= MAX_T; num_threads++) {
         std::vector<std::thread> threads;
         std::vector<Cache*> clients(num_threads, 0x0);
@@ -78,26 +80,33 @@ int main()
         for(int i = 0; i < num_threads; i++){
             futures[i] = promises[i].get_future();
             clients[i] = new Cache("127.0.0.1", "42069");
-            warm(gen, clients[i], CACHE_SIZE/num_threads);
             threads.push_back(std::thread(do_nreq_requests, gen, clients[i], TRIALS, &(promises[i])));
             threads[i].join();
         }
-        for(int i = 0; i < num_threads; i++ ) {
+        warm(gen, clients[0], CACHE_SIZE);
+        double total_latency = 0.0;
+
+        for(int i = 0; i < num_threads; i++) {
             results[i] = futures[i].get();
+            total_latency += std::accumulate(results[i].begin(), results[i].end(), 0) ;
         }
 
-        double total_latency = 0.0;
+        total_latency = total_latency / std::nano::den;
+        
+        std::vector<double> big_results(num_threads * TRIALS, 0.0);
         for(int i = 0; i < num_threads; i++) {
-            total_latency += std::accumulate(results[i].begin(), results[i].end(), 0);
+            for(int j = 0; j < TRIALS; j++) {
+                big_results[i * TRIALS + j] = results[i][j];
+            }
         }
-        double throughput = TRIALS * num_threads / total_latency;
-        std::ofstream output;
-        output.open(std::to_string(num_threads) + "_threads.dat");
-        for(std::vector<double>::size_type i = 0; i < 100; i++) {
-            output << i << "\t" << throughput << std::endl;
-        }
-        output.close();
+        std::sort(big_results.begin(), big_results.end());
+
+        double throughput = (TRIALS * num_threads) / (total_latency);
+        std::cout << "total latency of "<< TRIALS * num_threads << " requests: " << total_latency << "s" << std::endl;
+        std::cout << "\t throughput = " << throughput << "req/s" << std::endl;
+        output << num_threads << "\t" << throughput << std::endl;
     }
+    output.close();
     return 0;
 }
 
