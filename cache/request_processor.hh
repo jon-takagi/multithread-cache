@@ -169,7 +169,7 @@ public:
             }
             //Resets the cache and sends back a basic response with string body
 
-            //std::cout << "resetting the cache";
+            std::cout << "resetting the cache";
             std::unique_lock lock(mutex_);
             server_cache->reset();
             lock.unlock();
