@@ -64,7 +64,7 @@ void do_nreq_requests(Generator gen_, Cache* cache_, int nreq, std::promise<std:
 int main()
 {
     const int CACHE_SIZE = 8192;
-    const int TRIALS = 1000000;
+    const int TRIALS = 10000000;
     const int THREADS = 4;
     Generator gen = Generator(8, 0.2, CACHE_SIZE, 8);
     std::vector<std::thread> threads;
@@ -92,7 +92,10 @@ int main()
         }
     }
     double percentile = big_results[.95 *  TRIALS * THREADS];
+    double total_latency = std::accumulate(big_results.begin(), big_results.end(), 0);
+    double throughput = TRIALS * THREADS / total_latency * std::milli::den;
     std::cout << "95th percentile: " << percentile << "ms" << std::endl;
+    std::cout << "throughput: " << throughput << "reqs/s" << std::endl;
     return 0;
 }
 
