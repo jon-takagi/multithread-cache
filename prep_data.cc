@@ -88,11 +88,12 @@ int main()
 
         for(int i = 0; i < num_threads; i++) {
             results[i] = futures[i].get();
+            std::cout << "thread " << i << " took " <<  std::accumulate(results[i].begin(), results[i].end(), 0) << " ns total " << std::endl;
             total_latency += std::accumulate(results[i].begin(), results[i].end(), 0) ;
         }
 
         total_latency = total_latency / std::nano::den;
-        
+
         std::vector<double> big_results(num_threads * TRIALS, 0.0);
         for(int i = 0; i < num_threads; i++) {
             for(int j = 0; j < TRIALS; j++) {
@@ -105,16 +106,8 @@ int main()
         std::cout << "total latency of "<< TRIALS * num_threads << " requests: " << total_latency << "s" << std::endl;
         std::cout << "\t throughput = " << throughput << "req/s" << std::endl;
         output << num_threads << "\t" << throughput << std::endl;
+        clients[0]->reset();
     }
     output.close();
     return 0;
 }
-
-
-// double lower_bound = 10;
-// double upper_bound = 500;
-// std::uniform_real_distribution<double> unif(lower_bound,upper_bound);
-// std::default_random_engine re;
-// double a_random_double = unif(re);
-// a_random_double = unif(re);
-// results[i] = a_random_double;

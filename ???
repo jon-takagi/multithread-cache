@@ -1,32 +1,4 @@
-
-
-
-vagrant@ubuntu:/vagrant/systems/multithread-cache$ rm perf_test.bin ; make perf_test.bin
-g++ -Wall -Wextra -pedantic -Werror -std=c++17 -O3 -g -I /usr/local/boost_1_72_0/ -pthread -o perf_test.bin thread_test.cc  out/fifo_evictor.o out/gen.o out/cache_client.o
-vagrant@ubuntu:/vagrant/systems/multithread-cache$ ./perf_test.bin
-printing results...
-100000 requests took 11.7207s
-throughput: 8531.92req/s
-95th percentile: 202.659ms
-vagrant@ubuntu:/vagrant/systems/multithread-cache$ rm perf_test.bin ; make perf_test.bin
-g++ -Wall -Wextra -pedantic -Werror -std=c++17 -O3 -g -I /usr/local/boost_1_72_0/ -pthread -o perf_test.bin thread_test.cc  out/fifo_evictor.o out/gen.o out/cache_client.o
-vagrant@ubuntu:/vagrant/systems/multithread-cache$ ./perf_test.bin
-printing results...
-200000 requests took 22.3259s
-throughput: 8958.2req/s
-95th percentile: 187.027ms
-vagrant@ubuntu:/vagrant/systems/multithread-cache$ rm perf_test.bin ; make perf_test.bin
-g++ -Wall -Wextra -pedantic -Werror -std=c++17 -O3 -g -I /usr/local/boost_1_72_0/ -pthread -o perf_test.bin thread_test.cc  out/fifo_evictor.o out/gen.o out/cache_client.o
-vagrant@ubuntu:/vagrant/systems/multithread-cache$ ./perf_test.bin
-printing results...
-300000 requests took 34.7647s
-throughput: 8629.45req/s
-95th percentile: 219.9ms
-vagrant@ubuntu:/vagrant/systems/multithread-cache$ rm perf_test.bin ; make perf_test.bin
-g++ -Wall -Wextra -pedantic -Werror -std=c++17 -O3 -g -I /usr/local/boost_1_72_0/ -pthread -o perf_test.bin thread_test.cc  out/fifo_evictor.o out/gen.o out/cache_client.o
-vagrant@ubuntu:/vagrant/systems/multithread-cache$ ./perf_test.bin
-printing results...
-400000 requests took 39.4047s
-throughput: 10151.1req/s
-95th percentile: 190.533ms
-vagrant@ubuntu:/vagrant/systems/multithread-cache$
+1   8531.92 req/s
+2   958.2 req/s
+3   8629.45 req/s
+4   10151.1 req/s

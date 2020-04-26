@@ -65,12 +65,17 @@ void do_nreq_requests(Generator gen_, Cache* cache_, int nreq, std::promise<std:
     promObj->set_value(results);
 }
 
-int main()
+int main(int argc, char* argv[])
 {
     const int CACHE_SIZE = 8192;
-    const int TRIALS = 100000;
-    const int THREADS = 4;
+    const int TRIALS = 1000000;
+    int THREADS = 0;
+    if(argc == 2) {
+        THREADS = atoi(argv[1]);
+    }
+
     Generator gen = Generator(8, 0.2, CACHE_SIZE, 8);
+
     std::vector<std::thread> threads;
     std::vector<Cache*> clients(THREADS, 0x0);
     std::vector<std::promise<std::vector<double>>> promises(THREADS);
@@ -99,26 +104,15 @@ int main()
         }
     }
     std::sort(big_results.begin(), big_results.end());
-    std::cout << "printing results..." << std::endl;
     std::ofstream output;
     output.open("latency.dat");
     for(int i = 0; i < 100; i++) {
         output << big_results[i * TRIALS * THREADS / 100] << "\t" << i << std::endl;
     }
     output.close();
-    double percentile = big_results[.95 *  TRIALS * THREADS];
-    std::cout << THREADS * TRIALS << " requests took " << total_latency << "s" << std::endl;
-    std::cout << "throughput: " << TRIALS * THREADS / total_latency << "req/s" << std::endl;
-    std::cout << "95th percentile: " << percentile << "ms" << std::endl;
+    // double percentile = big_results[.95 *  TRIALS * THREADS];
+    double throughput = (TRIALS * THREADS) / total_latency;
+    std::cout << THREADS << "\t" << throughput << std::endl;
     clients[0]->reset();
     return 0;
 }
-
-
-// double lower_bound = 10;
-// double upper_bound = 500;
-// std::uniform_real_distribution<double> unif(lower_bound,upper_bound);
-// std::default_random_engine re;
-// double a_random_double = unif(re);
-// a_random_double = unif(re);
-// results[i] = a_random_double;
