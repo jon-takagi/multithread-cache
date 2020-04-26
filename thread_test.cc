@@ -7,6 +7,7 @@
 #include <fstream>
 #include "gen.hh"
 #include <string.h>
+#include <fstream>
 
 void warm(Generator gen_, Cache* cache_, int size)
 {
@@ -48,7 +49,10 @@ double time_single_request(Generator gen_, Cache* cache_) {
     // std::cout << std::get<2>(req) << " [key: " << std::get<0>(req) << ", val: " << std::get<1>(req) <<"]"<< std::endl;
         t2 = std::chrono::high_resolution_clock::now();
     }
-    std::chrono::duration<double, std::milli> elapsed = std::chrono::duration_cast<std::chrono::duration<double, std::milli>> (t2-t1);
+    std::chrono::duration<double, std::micro> elapsed = std::chrono::duration_cast<std::chrono::duration<double, std::micro>> (t2-t1);
+    if(elapsed.count() == 0) {
+        std::cout << "0ms request: method = " << req.method_ << ", key = " << req.key_ << ", target = " << val_str << std::endl;
+    }
     return elapsed.count();
 }
 
@@ -61,12 +65,17 @@ void do_nreq_requests(Generator gen_, Cache* cache_, int nreq, std::promise<std:
     promObj->set_value(results);
 }
 
-int main()
+int main(int argc, char* argv[])
 {
     const int CACHE_SIZE = 8192;
     const int TRIALS = 1000000;
-    const int THREADS = 4;
+    int THREADS = 0;
+    if(argc == 2) {
+        THREADS = atoi(argv[1]);
+    }
+
     Generator gen = Generator(8, 0.2, CACHE_SIZE, 8);
+
     std::vector<std::thread> threads;
     std::vector<Cache*> clients(THREADS, 0x0);
     std::vector<std::promise<std::vector<double>>> promises(THREADS);
@@ -75,15 +84,18 @@ int main()
     for(int i = 0; i < THREADS; i++){
         futures[i] = promises[i].get_future();
         clients[i] = new Cache("127.0.0.1", "42069");
-        warm(gen, clients[i], CACHE_SIZE/THREADS);
         threads.push_back(std::thread(do_nreq_requests, gen, clients[i], TRIALS, &(promises[i])));
-    }
-    for(int i = 0; i < THREADS; i++) {
         threads[i].join();
     }
+    warm(gen, clients[0], CACHE_SIZE);
+    double total_latency = 0.0;
+
     for(int i = 0; i < THREADS; i++ ) {
         results[i] = futures[i].get();
+        total_latency += std::accumulate(results[i].begin(), results[i].end(), 0) ;
     }
+
+    total_latency = total_latency / std::micro::den;
 
     std::vector<double> big_results(THREADS * TRIALS, 0.0);
     for(int i = 0; i < THREADS; i++) {
@@ -91,16 +103,16 @@ int main()
             big_results[i * TRIALS + j] = results[i][j];
         }
     }
-    double percentile = big_results[.95 *  TRIALS * THREADS];
-    std::cout << "95th percentile: " << percentile << "ms" << std::endl;
+    std::sort(big_results.begin(), big_results.end());
+    std::ofstream output;
+    output.open("latency.dat");
+    for(int i = 0; i < 100; i++) {
+        output << big_results[i * TRIALS * THREADS / 100] << "\t" << i << std::endl;
+    }
+    output.close();
+    // double percentile = big_results[.95 *  TRIALS * THREADS];
+    double throughput = (TRIALS * THREADS) / total_latency;
+    std::cout << THREADS << "\t" << throughput << std::endl;
+    clients[0]->reset();
     return 0;
 }
-
-
-// double lower_bound = 10;
-// double upper_bound = 500;
-// std::uniform_real_distribution<double> unif(lower_bound,upper_bound);
-// std::default_random_engine re;
-// double a_random_double = unif(re);
-// a_random_double = unif(re);
-// results[i] = a_random_double;

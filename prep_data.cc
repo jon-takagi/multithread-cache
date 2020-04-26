@@ -6,9 +6,8 @@
 #include <algorithm>
 #include <fstream>
 #include "gen.hh"
-#include <stdio.h>
 #include <string.h>
-
+#include <fstream>
 void warm(Generator gen_, Cache* cache_, int size)
 {
     int sets = 0;
@@ -26,24 +25,6 @@ void warm(Generator gen_, Cache* cache_, int size)
     }
 }
 
-template<typename Numeric, typename Generator = std::mt19937>
-Numeric random(Numeric from, Numeric to)
-{
-    thread_local static Generator gen(std::random_device{}());
-
-    using dist_type = typename std::conditional
-    <
-        std::is_integral<Numeric>::value
-        , std::uniform_int_distribution<Numeric>
-        , std::uniform_real_distribution<Numeric>
-    >::type;
-
-    thread_local static dist_type dist;
-
-    return dist(gen, typename dist_type::param_type{from, to});
-}
-
-
 double time_single_request(Generator gen_, Cache* cache_) {
     std::chrono::time_point<std::chrono::high_resolution_clock> t1;
     std::chrono::time_point<std::chrono::high_resolution_clock> t2;
@@ -51,7 +32,7 @@ double time_single_request(Generator gen_, Cache* cache_) {
     Cache::size_type size = 0;
     std::string val_str = std::string(req.val_size_, 'B');
     Cache::val_type val = val_str.c_str();
-    if(req.method_ == "get") {
+    if(req.method_ =="get") {
         t1 = std::chrono::high_resolution_clock::now();
         cache_->get(req.key_, size);
     // std::cout << std::get<2>(req) << " [key: " << std::get<0>(req) << ", val: " << std::get<1>(req) <<"]"<< std::endl;
@@ -67,7 +48,7 @@ double time_single_request(Generator gen_, Cache* cache_) {
     // std::cout << std::get<2>(req) << " [key: " << std::get<0>(req) << ", val: " << std::get<1>(req) <<"]"<< std::endl;
         t2 = std::chrono::high_resolution_clock::now();
     }
-    std::chrono::duration<double, std::milli> elapsed = std::chrono::duration_cast<std::chrono::duration<double, std::milli>> (t2-t1);
+    std::chrono::duration<double, std::nano> elapsed = std::chrono::duration_cast<std::chrono::duration<double, std::nano>> (t2-t1);
     return elapsed.count();
 }
 
@@ -83,45 +64,49 @@ void do_nreq_requests(Generator gen_, Cache* cache_, int nreq, std::promise<std:
 int main()
 {
     const int CACHE_SIZE = 8192;
-    const int TRIALS = 10000;
-    const int MAX_THREADS = 8;
+    const int TRIALS = 100000;
+    const int MAX_T = 4;
+
     Generator gen = Generator(8, 0.2, CACHE_SIZE, 8);
 
     std::ofstream output;
-    output.open("part1.dat");
-    for(int num_threads = 1; num_threads <= MAX_THREADS; num_threads++) {
-
+    output.open("throughput.dat");
+    for(int num_threads = 1; num_threads <= MAX_T; num_threads++) {
         std::vector<std::thread> threads;
-        std::vector<Cache> clients(num_threads);
+        std::vector<Cache*> clients(num_threads, 0x0);
         std::vector<std::promise<std::vector<double>>> promises(num_threads);
         std::vector<std::future<std::vector<double>>> futures(num_threads);
         std::vector<std::vector<double>> results(num_threads, std::vector<double>(TRIALS));
-        for(int i = 0; i <num_threads; i++){
-            clients[i]("127.0.0.1", "42069");
-            warm(gen, &clients[i], CACHE_SIZE);
+        for(int i = 0; i < num_threads; i++){
             futures[i] = promises[i].get_future();
-            threads.push_back(std::thread(do_nreq_requests, gen, &clients[i], TRIALS, &(promises[i])));
-        }
-        for(int i = 0; i <num_threads; i++) {
+            clients[i] = new Cache("127.0.0.1", "42069");
+            threads.push_back(std::thread(do_nreq_requests, gen, clients[i], TRIALS, &(promises[i])));
             threads[i].join();
         }
-        for(int i = 0; i <num_threads; i++ ) {
+        warm(gen, clients[0], CACHE_SIZE);
+        double total_latency = 0.0;
+
+        for(int i = 0; i < num_threads; i++) {
             results[i] = futures[i].get();
+            std::cout << "thread " << i << " took " <<  std::accumulate(results[i].begin(), results[i].end(), 0) << " ns total " << std::endl;
+            total_latency += std::accumulate(results[i].begin(), results[i].end(), 0) ;
         }
 
+        total_latency = total_latency / std::nano::den;
+
         std::vector<double> big_results(num_threads * TRIALS, 0.0);
-        for(int i = 0; i <num_threads; i++) {
+        for(int i = 0; i < num_threads; i++) {
             for(int j = 0; j < TRIALS; j++) {
                 big_results[i * TRIALS + j] = results[i][j];
             }
         }
-        double percentile = big_results[.95 *  TRIALS *num_threads];
+        std::sort(big_results.begin(), big_results.end());
 
-        double total_latency = std::accumulate(big_results.begin(), big_results.end(), 0);
-        double throughput = (num_threads * TRIALS) / total_latency;
-
-        output << num_threads << "\t" << percentile << "\t" << throughput << std::endl;
-        std::cout << num_threads << " | " << total_latency << "\t" << percentile << "\t" << throughput << "\t" << std::endl;
+        double throughput = (TRIALS * num_threads) / (total_latency);
+        std::cout << "total latency of "<< TRIALS * num_threads << " requests: " << total_latency << "s" << std::endl;
+        std::cout << "\t throughput = " << throughput << "req/s" << std::endl;
+        output << num_threads << "\t" << throughput << std::endl;
+        clients[0]->reset();
     }
     output.close();
     return 0;
