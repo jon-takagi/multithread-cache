@@ -48,7 +48,7 @@ double time_single_request(Generator gen_, Cache* cache_) {
     // std::cout << std::get<2>(req) << " [key: " << std::get<0>(req) << ", val: " << std::get<1>(req) <<"]"<< std::endl;
         t2 = std::chrono::high_resolution_clock::now();
     }
-    std::chrono::duration<double, std::nano> elapsed = std::chrono::duration_cast<std::chrono::duration<double, std::nano>> (t2-t1);
+    std::chrono::duration<double, std::micro> elapsed = std::chrono::duration_cast<std::chrono::duration<double, std::micro>> (t2-t1);
     return elapsed.count();
 }
 
@@ -65,7 +65,7 @@ int main()
 {
     const int CACHE_SIZE = 8192;
     const int TRIALS = 100000;
-    const int MAX_T = 4;
+    const int MAX_T = 8;
 
     Generator gen = Generator(8, 0.2, CACHE_SIZE, 8);
 
@@ -88,11 +88,10 @@ int main()
 
         for(int i = 0; i < num_threads; i++) {
             results[i] = futures[i].get();
-            std::cout << "thread " << i << " took " <<  std::accumulate(results[i].begin(), results[i].end(), 0) << " ns total " << std::endl;
             total_latency += std::accumulate(results[i].begin(), results[i].end(), 0) ;
         }
 
-        total_latency = total_latency / std::nano::den;
+        total_latency = total_latency / std::micro::den;
 
         std::vector<double> big_results(num_threads * TRIALS, 0.0);
         for(int i = 0; i < num_threads; i++) {
